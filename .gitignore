@@ -1,0 +1,32 @@
+# Environment variables
+.env
+.env.*
+
+# Python
+*.pyc
+__pycache__/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+.claude/
+
+# Large Typescript/Node data
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Global Large Data Exclusion (CRITICAL)
+**/imdb_data/
+*.db
+*.tsv
+*.tsv.gz
