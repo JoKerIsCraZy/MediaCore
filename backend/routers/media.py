@@ -2,6 +2,8 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 from services.tmdb import tmdb_service
 from services.filter_engine import AVAILABLE_FILTERS, SORT_OPTIONS_LIST
+from services.local_discover import local_discover_service
+import asyncio
 
 router = APIRouter(prefix="/media", tags=["Media"])
 
@@ -25,12 +27,57 @@ async def search_media(
         item_type = item.get("media_type", media_type)
         if item_type in ["movie", "tv"]:
             normalized.append(tmdb_service.normalize_result(item, item_type))
+            
+    # Enrich with IMDb ratings (if available in local DB)
+    if normalized:
+        normalized = await local_discover_service.enrich_movies_with_ratings(normalized)
     
     return {
         "results": normalized,
         "page": result.get("page", 1),
         "total_pages": result.get("total_pages", 0),
         "total_results": result.get("total_results", 0),
+    }
+
+
+# Helper for multi-page fetching (3 TMDB pages = 1 App page -> 60 items)
+async def fetch_multi_page(fetch_func, *args, page: int = 1, media_type: str = "movie"):
+    tmdb_results = []
+    total_pages = 0
+    total_results = 0
+    
+    # Fetch 3 pages
+    start_page = (page - 1) * 3 + 1
+    import asyncio
+    
+    # Prepare tasks
+    tasks = []
+    for p in range(start_page, start_page + 3):
+        tasks.append(fetch_func(*args, page=p))
+        
+    responses = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    for response in responses:
+        if isinstance(response, dict):
+            # Aggregate stats from the first successful response (approximate)
+            if not total_results:
+                total_results = response.get("total_results", 0)
+                # Adjust total pages by factor of 3
+                orig_total = response.get("total_pages", 0)
+                total_pages = (orig_total + 2) // 3
+            
+            items = response.get("results", [])
+            for item in items:
+                tmdb_results.append(tmdb_service.normalize_result(item, media_type))
+        else:
+            # Handle error or exception
+            pass
+            
+    return {
+        "results": tmdb_results,
+        "page": page,
+        "total_pages": total_pages,
+        "total_results": total_results
     }
 
 
@@ -40,20 +87,13 @@ async def get_trending(
     time_window: str = Query("week", regex="^(day|week)$"),
     page: int = Query(1, ge=1),
 ):
-    """Get trending movies or TV shows."""
-    result = await tmdb_service.get_trending(media_type, time_window, page)
+    """Get trending movies or TV shows (60 items per page)."""
+    data = await fetch_multi_page(tmdb_service.get_trending, media_type, time_window, page=page, media_type=media_type)
     
-    normalized = [
-        tmdb_service.normalize_result(item, media_type)
-        for item in result.get("results", [])
-    ]
+    if data["results"]:
+        data["results"] = await local_discover_service.enrich_movies_with_ratings(data["results"])
     
-    return {
-        "results": normalized,
-        "page": result.get("page", 1),
-        "total_pages": result.get("total_pages", 0),
-        "total_results": result.get("total_results", 0),
-    }
+    return data
 
 
 @router.get("/popular")
@@ -61,20 +101,13 @@ async def get_popular(
     media_type: str = Query("movie", regex="^(movie|tv)$"),
     page: int = Query(1, ge=1),
 ):
-    """Get popular movies or TV shows."""
-    result = await tmdb_service.get_popular(media_type, page)
+    """Get popular movies or TV shows (60 items per page)."""
+    data = await fetch_multi_page(tmdb_service.get_popular, media_type, page=page, media_type=media_type)
     
-    normalized = [
-        tmdb_service.normalize_result(item, media_type)
-        for item in result.get("results", [])
-    ]
+    if data["results"]:
+        data["results"] = await local_discover_service.enrich_movies_with_ratings(data["results"])
     
-    return {
-        "results": normalized,
-        "page": result.get("page", 1),
-        "total_pages": result.get("total_pages", 0),
-        "total_results": result.get("total_results", 0),
-    }
+    return data
 
 
 @router.get("/top-rated")
@@ -82,74 +115,47 @@ async def get_top_rated(
     media_type: str = Query("movie", regex="^(movie|tv)$"),
     page: int = Query(1, ge=1),
 ):
-    """Get top rated movies or TV shows."""
-    result = await tmdb_service.get_top_rated(media_type, page)
+    """Get top rated movies or TV shows (60 items per page)."""
+    data = await fetch_multi_page(tmdb_service.get_top_rated, media_type, page=page, media_type=media_type)
     
-    normalized = [
-        tmdb_service.normalize_result(item, media_type)
-        for item in result.get("results", [])
-    ]
+    if data["results"]:
+        data["results"] = await local_discover_service.enrich_movies_with_ratings(data["results"])
     
-    return {
-        "results": normalized,
-        "page": result.get("page", 1),
-        "total_pages": result.get("total_pages", 0),
-        "total_results": result.get("total_results", 0),
-    }
+    return data
 
 
 @router.get("/upcoming")
 async def get_upcoming(page: int = Query(1, ge=1)):
-    """Get upcoming movies."""
-    result = await tmdb_service.get_upcoming(page)
+    """Get upcoming movies (60 items per page)."""
+    # upcoming is movie only
+    data = await fetch_multi_page(tmdb_service.get_upcoming, page=page, media_type="movie")
     
-    normalized = [
-        tmdb_service.normalize_result(item, "movie")
-        for item in result.get("results", [])
-    ]
+    if data["results"]:
+        data["results"] = await local_discover_service.enrich_movies_with_ratings(data["results"])
     
-    return {
-        "results": normalized,
-        "page": result.get("page", 1),
-        "total_pages": result.get("total_pages", 0),
-        "total_results": result.get("total_results", 0),
-    }
+    return data
 
 
 @router.get("/now-playing")
 async def get_now_playing(page: int = Query(1, ge=1)):
-    """Get movies currently in theaters."""
-    result = await tmdb_service.get_now_playing(page)
+    """Get movies currently in theaters (60 items per page)."""
+    data = await fetch_multi_page(tmdb_service.get_now_playing, page=page, media_type="movie")
     
-    normalized = [
-        tmdb_service.normalize_result(item, "movie")
-        for item in result.get("results", [])
-    ]
+    if data["results"]:
+        data["results"] = await local_discover_service.enrich_movies_with_ratings(data["results"])
     
-    return {
-        "results": normalized,
-        "page": result.get("page", 1),
-        "total_pages": result.get("total_pages", 0),
-        "total_results": result.get("total_results", 0),
-    }
+    return data
 
 
 @router.get("/airing-today")
 async def get_airing_today(page: int = Query(1, ge=1)):
-    """Get TV shows airing today."""
-    result = await tmdb_service.get_airing_today(page)
+    """Get TV shows airing today (60 items per page)."""
+    data = await fetch_multi_page(tmdb_service.get_airing_today, page=page, media_type="tv")
     
-    normalized = [
-        tmdb_service.normalize_result(item, "tv")
-        for item in result.get("results", [])
-    ]
+    if data["results"]:
+        data["results"] = await local_discover_service.enrich_movies_with_ratings(data["results"])
     
-    return {
-        "results": normalized,
-        "page": result.get("page", 1),
-        "total_pages": result.get("total_pages", 0),
-        "total_results": result.get("total_results", 0),
-    }
+    return data
 
 
 @router.get("/{media_type}/{tmdb_id}")
@@ -181,6 +187,24 @@ async def get_media_details(
     external_ids = details.get("external_ids", {})
     result["imdb_id"] = external_ids.get("imdb_id")
     result["tvdb_id"] = external_ids.get("tvdb_id")
+    
+    # Enrichment: Fetch IMDb Rating if imdb_id exists
+    if result.get("imdb_id"):
+        try:
+            from database import media_session_factory
+            from models_media import ImdbRating
+            from sqlalchemy import select
+            
+            async with media_session_factory() as session:
+                stmt_r = select(ImdbRating.averageRating, ImdbRating.numVotes).where(ImdbRating.tconst == result["imdb_id"])
+                rr = await session.execute(stmt_r)
+                row = rr.first()
+                if row:
+                    result["imdb_rating"] = row.averageRating
+                    result["imdb_votes"] = row.numVotes
+        except Exception as e:
+            # log but don't fail
+            pass
     
     # Keywords
     keywords_data = details.get("keywords", {})

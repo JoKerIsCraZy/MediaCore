@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/jokerlist.db"
+    media_database_url: str = "sqlite+aiosqlite:///../api-central/media_database.db"
     
     # TMDB API
     tmdb_api_key: str = ""
@@ -26,7 +27,7 @@ class Settings(BaseSettings):
     trakt_client_secret: str = ""
     
     # App settings
-    app_name: str = "JokerList"
+    app_name: str = "MediaCore"
     debug: bool = False
     
     class Config:

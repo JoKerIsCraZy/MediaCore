@@ -65,6 +65,10 @@ app.add_middleware(
 app.include_router(lists.router, prefix="/api")
 app.include_router(media.router, prefix="/api")
 
+# Include new discover router
+from routers import discover
+app.include_router(discover.router, prefix="/api")
+
 
 @app.get("/health")
 async def health_check():

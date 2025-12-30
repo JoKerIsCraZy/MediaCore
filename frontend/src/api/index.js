@@ -104,6 +104,11 @@ export const mediaApi = {
   getFilters: () => fetchApi('/media/filters'),
   
   getSortOptions: () => fetchApi('/media/sort-options'),
+
+  discover: (page = 1, filters = [], sortBy = 'popularity.desc') => {
+    const filterStr = JSON.stringify(filters);
+    return fetchApi(`/discover?page=${page}&sort_by=${sortBy}&filters=${encodeURIComponent(filterStr)}`);
+  },
 };
 
 // ============ Image URL Helper ============

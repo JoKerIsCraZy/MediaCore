@@ -1,5 +1,8 @@
 from typing import List, Dict, Any, Optional
 from services.tmdb import tmdb_service
+# Import local service lazily or directly but avoid circular dependency if routers import engine
+# LocalDiscoverService is in services.local_discover.
+from services.local_discover import local_discover_service
 import logging
 import asyncio
 
@@ -192,6 +195,22 @@ class FilterEngine:
         Returns TMDB discover response with results.
         """
         filters = filters or []
+
+        # Check if we must use local discover (IMDb filters)
+        # Or if we CAN use local discover (simple filters supported by local)
+        # For now, mandate local discover if imdb rating/votes are used
+        use_local = False
+        for f in filters:
+            if f.get("field") in ["imdb_rating", "imdb_votes"]:
+                use_local = True
+                break
+        
+        if use_local:
+            return await local_discover_service.discover_movies(
+                page=page,
+                filters=filters,
+                sort_by=sort_by
+            )
 
         # Check if we have multiple watch_regions
         watch_region_filter = next((f for f in filters if f.get("field") == "watch_region"), None)
@@ -579,6 +598,20 @@ AVAILABLE_FILTERS = {
         "type": "date",
         "operators": ["gte", "lte"],
     },
+    "imdb_rating": {
+        "label": "IMDb Rating",
+        "type": "range",
+        "min": 0,
+        "max": 10,
+        "step": 0.1,
+        "operators": ["gte", "lte"],
+    },
+    "imdb_votes": {
+        "label": "Minimum IMDb Votes",
+        "type": "number",
+        "min": 0,
+        "operators": ["gte"],
+    },
     "with_genres": {
         "label": "Genres (Include)",
         "type": "multi-select",
@@ -647,8 +680,10 @@ AVAILABLE_FILTERS = {
 SORT_OPTIONS_LIST = [
     {"value": "popularity.desc", "label": "Popularity (High to Low)"},
     {"value": "popularity.asc", "label": "Popularity (Low to High)"},
-    {"value": "vote_average.desc", "label": "Rating (High to Low)"},
-    {"value": "vote_average.asc", "label": "Rating (Low to High)"},
+    {"value": "vote_average.desc", "label": "TMDB Rating (High to Low)"},
+    {"value": "vote_average.asc", "label": "TMDB Rating (Low to High)"},
+    {"value": "imdb_rating.desc", "label": "IMDb Rating (High to Low)"},
+    {"value": "imdb_rating.asc", "label": "IMDb Rating (Low to High)"},
     {"value": "release_date.desc", "label": "Release Date (Newest)"},
     {"value": "release_date.asc", "label": "Release Date (Oldest)"},
     {"value": "vote_count.desc", "label": "Vote Count (High to Low)"},

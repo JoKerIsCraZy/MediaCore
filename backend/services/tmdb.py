@@ -83,6 +83,14 @@ class TMDBService:
             params={"query": query, "page": page}
         )
     
+    async def find_by_external_id(self, external_id: str, source: str = "imdb_id") -> Dict:
+        """Find media by external ID (e.g. IMDb ID)."""
+        endpoint = f"/find/{external_id}"
+        return await self._request(
+            "GET", endpoint,
+            params={"external_source": source}
+        )
+    
     # ============ Discover Methods ============
     
     async def discover(

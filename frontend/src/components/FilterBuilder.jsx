@@ -421,6 +421,24 @@ export default function FilterBuilder({ filters, onChange, mediaType = 'movie' }
           min={0}
           placeholder="e.g. 100"
         />
+
+        <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+          <RangeSlider
+            label="IMDb Rating"
+            min={0}
+            max={10}
+            step={0.1}
+            value={getRangeValue('imdb_rating', 'imdb_rating_lte', 0, 10)}
+            onChange={(vals) => setRangeValue('imdb_rating', 'imdb_rating_lte', vals, 0, 10)}
+          />
+          <NumberInput
+            label="Minimum IMDb Votes"
+            value={getFilterValue('imdb_votes')}
+            onChange={(v) => setFilterValue('imdb_votes', v, 'gte')}
+            min={0}
+            placeholder="e.g. 1000"
+          />
+        </div>
       </FilterSection>
 
       {/* Release & Dates */}

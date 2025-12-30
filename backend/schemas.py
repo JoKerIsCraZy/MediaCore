@@ -61,6 +61,12 @@ class ListUpdate(BaseModel):
     update_interval: Optional[int] = None
 
 
+    vote_average: Optional[float] = None
+    vote_count: Optional[int] = None
+    popularity: Optional[float] = None
+    imdb_rating: Optional[float] = None
+    imdb_votes: Optional[int] = None
+
 class ListItemResponse(BaseModel):
     """Schema for list item response."""
     id: int
@@ -76,6 +82,8 @@ class ListItemResponse(BaseModel):
     vote_average: Optional[float] = None
     vote_count: Optional[int] = None
     popularity: Optional[float] = None
+    imdb_rating: Optional[float] = None
+    imdb_votes: Optional[int] = None
     position: int
     added_at: datetime
 
@@ -116,6 +124,8 @@ class MediaBase(BaseModel):
     vote_average: Optional[float] = None
     vote_count: Optional[int] = None
     popularity: Optional[float] = None
+    imdb_rating: Optional[float] = None
+    imdb_votes: Optional[int] = None
 
 
 class MediaSearchResult(MediaBase):

@@ -21,9 +21,25 @@ engine = create_async_engine(
     echo=settings.debug,
 )
 
+# Media DB (Secondary)
+media_db_url = settings.media_database_url
+if media_db_url.startswith("sqlite://") and "+aiosqlite" not in media_db_url:
+    media_db_url = media_db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+
+media_engine = create_async_engine(
+    media_db_url,
+    echo=settings.debug,
+)
+
 # Create async session factory
 async_session = async_sessionmaker(
     engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+media_session_factory = async_sessionmaker(
+    media_engine,
     class_=AsyncSession,
     expire_on_commit=False,
 )
@@ -56,3 +72,4 @@ async def init_db():
 async def close_db():
     """Close database connections."""
     await engine.dispose()
+    await media_engine.dispose()

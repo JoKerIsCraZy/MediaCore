@@ -17,6 +17,7 @@ export default function Discover() {
   const [category, setCategory] = useState('trending')
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [imdbRating, setImdbRating] = useState(0)
   
   // Fetch category data
   const { data: categoryData, isLoading: categoryLoading } = useQuery({
@@ -46,6 +47,13 @@ export default function Discover() {
     queryFn: () => mediaApi.search(searchQuery, mediaType),
     enabled: isSearching && searchQuery.length > 0,
   })
+
+  // Discover data (IMDb filter)
+  const { data: discoverData, isLoading: discoverLoading } = useQuery({
+    queryKey: ['discover_filter', imdbRating, mediaType],
+    queryFn: () => mediaApi.discover(1, [{ field: 'imdb_rating', operator: 'gte', value: imdbRating }], 'popularity.desc'),
+    enabled: imdbRating > 0 && !isSearching,
+  })
   
   const handleSearch = (e) => {
     e.preventDefault()
@@ -59,8 +67,9 @@ export default function Discover() {
     setIsSearching(false)
   }
   
-  const displayData = isSearching ? searchData : categoryData
-  const isLoading = isSearching ? searchLoading : categoryLoading
+  const isFiltering = imdbRating > 0
+  const displayData = isSearching ? searchData : (isFiltering ? discoverData : categoryData)
+  const isLoading = isSearching ? searchLoading : (isFiltering ? discoverLoading : categoryLoading)
   
   return (
     <div className="animate-fade-in">
@@ -102,26 +111,55 @@ export default function Discover() {
         </div>
       </form>
       
-      {/* Media Type Toggle */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        <button
-          className={`btn ${mediaType === 'movie' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setMediaType('movie')}
-        >
-          <Film size={16} />
-          Movies
-        </button>
-        <button
-          className={`btn ${mediaType === 'tv' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setMediaType('tv')}
-        >
-          <Tv size={16} />
-          TV Shows
-        </button>
+      <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Media Type Toggle */}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            className={`btn ${mediaType === 'movie' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setMediaType('movie')}
+          >
+            <Film size={16} />
+            Movies
+          </button>
+          <button
+            className={`btn ${mediaType === 'tv' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setMediaType('tv')}
+          >
+            <Tv size={16} />
+            TV Shows
+          </button>
+        </div>
+
+        {/* IMDb Rating Filter - Hide on Trending tab as requested */ }
+        {category !== 'trending' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '200px' }}>
+            <span style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Min IMDb Rating: <strong style={{ color: 'var(--text-primary)' }}>{imdbRating > 0 ? imdbRating : 'Any'}</strong>
+            </span>
+            <input 
+              type="range" 
+              min="0" 
+              max="9" 
+              step="0.5" 
+              value={imdbRating} 
+              onChange={(e) => setImdbRating(parseFloat(e.target.value))}
+              style={{ flex: 1, cursor: 'pointer' }}
+            />
+            {imdbRating > 0 && (
+              <button 
+                className="btn btn-ghost btn-sm" 
+                onClick={() => setImdbRating(0)}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+              >
+                Reset
+              </button>
+            )}
+        </div>
+        )}
       </div>
       
-      {/* Category Tabs (only show when not searching) */}
-      {!isSearching && (
+      {/* Category Tabs (only show when not searching or filtering) */}
+      {!isSearching && !isFiltering && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
           {CATEGORIES.map((cat) => {
             // Skip movie-only categories for TV

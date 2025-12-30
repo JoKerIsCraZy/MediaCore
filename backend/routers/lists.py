@@ -125,6 +125,45 @@ async def get_list(
     )
     items = items_result.scalars().all()
     
+    # Convert to dicts for enrichment
+    # Using ListItemResponse.model_validate first to handle property conversion if logic exists?
+    # No, model validation is strict. Better to use dict construction manually or __dict__ if simple.
+    # ListItem is ORM.
+    
+    from services.local_discover import local_discover_service
+    
+    items_data = []
+    for item in items:
+        # Basic dict conversion
+        d = {
+            "id": item.id,
+            "tmdb_id": item.tmdb_id, # Ensure tmdb_id is present for enrichment
+            "imdb_id": item.imdb_id,
+            "media_type": item.media_type,
+            "title": item.title,
+            "original_title": item.original_title,
+            "poster_path": item.poster_path,
+            "backdrop_path": item.backdrop_path,
+            "overview": item.overview,
+            "release_date": item.release_date,
+            "vote_average": item.vote_average,
+            "vote_count": item.vote_count,
+            "popularity": item.popularity,
+            "position": item.position,
+            "added_at": item.added_at,
+        }
+        items_data.append(d)
+        
+    # Enrich
+    if items_data:
+        try:
+            items_data = await local_discover_service.enrich_movies_with_ratings(items_data)
+        except Exception as e:
+            logger.error(f"Failed to enrich list items: {e}")
+            
+    # Convert to Response Model
+    # Since items_data now contains imdb_rating/votes, and we updated schema, it should pass.
+    
     return ListDetailResponse(
         id=media_list.id,
         name=media_list.name,
@@ -140,7 +179,7 @@ async def get_list(
         created_at=media_list.created_at,
         updated_at=media_list.updated_at,
         item_count=len(items),
-        items=[ListItemResponse.model_validate(item) for item in items],
+        items=[ListItemResponse(**item) for item in items_data],
     )
 
 
