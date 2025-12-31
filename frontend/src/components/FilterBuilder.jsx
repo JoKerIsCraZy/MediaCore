@@ -361,27 +361,39 @@ export default function FilterBuilder({ filters, onChange, mediaType = 'movie' }
     onChange(newFilters)
   }
 
-  // Special handling for range filters (creates two filter entries)
-  const getRangeValue = (fieldGte, fieldLte, defaultMin, defaultMax) => {
-    const gteFilter = filters.find(f => f.field === fieldGte)
-    const lteFilter = filters.find(f => f.field === fieldLte)
+  // Special handling for range filters (creates two filter entries with same field, different operators)
+  const getRangeValue = (baseField, defaultMin, defaultMax) => {
+    const gteFilter = filters.find(f => f.field === baseField && f.operator === 'gte')
+    const lteFilter = filters.find(f => f.field === baseField && f.operator === 'lte')
     const minVal = gteFilter?.value ?? defaultMin
     const maxVal = lteFilter?.value ?? defaultMax
-    // Only return if at least one is different from default
-    if (minVal !== defaultMin || maxVal !== defaultMax) {
-      return [minVal, maxVal]
-    }
-    return [defaultMin, defaultMax]
+    return [minVal, maxVal]
   }
 
-  const setRangeValue = (fieldGte, fieldLte, values, defaultMin, defaultMax) => {
-    let newFilters = filters.filter(f => f.field !== fieldGte && f.field !== fieldLte)
+  const setRangeValue = (baseField, values, defaultMin, defaultMax) => {
+    // Remove existing range filters for this field
+    let newFilters = filters.filter(f => f.field !== baseField || (f.operator !== 'gte' && f.operator !== 'lte'))
     const [minVal, maxVal] = values
     if (minVal !== defaultMin) {
-      newFilters.push({ field: fieldGte, operator: 'gte', value: minVal })
+      newFilters.push({ field: baseField, operator: 'gte', value: minVal })
     }
     if (maxVal !== defaultMax) {
-      newFilters.push({ field: fieldLte, operator: 'lte', value: maxVal })
+      newFilters.push({ field: baseField, operator: 'lte', value: maxVal })
+    }
+    onChange(newFilters)
+  }
+
+  // Helper for date filters - finds by field AND operator
+  const getDateFilterValue = (baseField, operator) => {
+    const filter = filters.find(f => f.field === baseField && f.operator === operator)
+    return filter?.value
+  }
+
+  const setDateFilterValue = (baseField, operator, value) => {
+    // Remove existing filter with same field and operator
+    let newFilters = filters.filter(f => !(f.field === baseField && f.operator === operator))
+    if (value) {
+      newFilters.push({ field: baseField, operator, value })
     }
     onChange(newFilters)
   }
@@ -411,8 +423,8 @@ export default function FilterBuilder({ filters, onChange, mediaType = 'movie' }
           min={0}
           max={10}
           step={0.5}
-          value={getRangeValue('vote_average', 'vote_average_lte', 0, 10)}
-          onChange={(vals) => setRangeValue('vote_average', 'vote_average_lte', vals, 0, 10)}
+          value={getRangeValue('vote_average', 0, 10)}
+          onChange={(vals) => setRangeValue('vote_average', vals, 0, 10)}
         />
         <NumberInput
           label="Minimum Votes"
@@ -422,23 +434,26 @@ export default function FilterBuilder({ filters, onChange, mediaType = 'movie' }
           placeholder="e.g. 100"
         />
 
-        <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-          <RangeSlider
-            label="IMDb Rating"
-            min={0}
-            max={10}
-            step={0.1}
-            value={getRangeValue('imdb_rating', 'imdb_rating_lte', 0, 10)}
-            onChange={(vals) => setRangeValue('imdb_rating', 'imdb_rating_lte', vals, 0, 10)}
-          />
-          <NumberInput
-            label="Minimum IMDb Votes"
-            value={getFilterValue('imdb_votes')}
-            onChange={(v) => setFilterValue('imdb_votes', v, 'gte')}
-            min={0}
-            placeholder="e.g. 1000"
-          />
-        </div>
+        {/* IMDb filters only for movies (local database only has movie data) */}
+        {mediaType === 'movie' && (
+          <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+            <RangeSlider
+              label="IMDb Rating"
+              min={0}
+              max={10}
+              step={0.1}
+              value={getRangeValue('imdb_rating', 0, 10)}
+              onChange={(vals) => setRangeValue('imdb_rating', vals, 0, 10)}
+            />
+            <NumberInput
+              label="Minimum IMDb Votes"
+              value={getFilterValue('imdb_votes')}
+              onChange={(v) => setFilterValue('imdb_votes', v, 'gte')}
+              min={0}
+              placeholder="e.g. 1000"
+            />
+          </div>
+        )}
       </FilterSection>
 
       {/* Release & Dates */}
@@ -453,14 +468,14 @@ export default function FilterBuilder({ filters, onChange, mediaType = 'movie' }
         />
         <div className="filter-row-2">
           <DateInput
-            label="Released After"
-            value={getFilterValue('release_date_gte')}
-            onChange={(v) => setFilterValue('release_date_gte', v, 'gte')}
+            label={mediaType === 'movie' ? 'Released After' : 'First Aired After'}
+            value={getDateFilterValue(mediaType === 'movie' ? 'release_date' : 'first_air_date', 'gte')}
+            onChange={(v) => setDateFilterValue(mediaType === 'movie' ? 'release_date' : 'first_air_date', 'gte', v)}
           />
           <DateInput
-            label="Released Before"
-            value={getFilterValue('release_date_lte')}
-            onChange={(v) => setFilterValue('release_date_lte', v, 'lte')}
+            label={mediaType === 'movie' ? 'Released Before' : 'First Aired Before'}
+            value={getDateFilterValue(mediaType === 'movie' ? 'release_date' : 'first_air_date', 'lte')}
+            onChange={(v) => setDateFilterValue(mediaType === 'movie' ? 'release_date' : 'first_air_date', 'lte', v)}
           />
         </div>
         {mediaType === 'movie' && (
@@ -558,15 +573,25 @@ export default function FilterBuilder({ filters, onChange, mediaType = 'movie' }
           min={0}
           max={300}
           step={5}
-          value={getRangeValue('with_runtime', 'with_runtime_lte', 0, 300)}
-          onChange={(vals) => setRangeValue('with_runtime', 'with_runtime_lte', vals, 0, 300)}
+          value={getRangeValue('with_runtime', 0, 300)}
+          onChange={(vals) => setRangeValue('with_runtime', vals, 0, 300)}
           suffix="min"
         />
         <SingleSelect
-          label="Certification"
+          label="Certification (US)"
           options={certifications}
           value={getFilterValue('certification')}
-          onChange={(v) => setFilterValue('certification', v)}
+          onChange={(v) => {
+            // Auto-set certification_country when certification is selected
+            if (v) {
+              setFilterValue('certification_country', 'US')
+            } else {
+              // Remove certification_country if certification is cleared
+              const newFilters = filters.filter(f => f.field !== 'certification_country')
+              onChange(newFilters)
+            }
+            setFilterValue('certification', v)
+          }}
           placeholder="Any rating"
         />
       </FilterSection>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { listsApi } from '../api'
 import { ArrowLeft, Save, Eye, Film, Tv } from 'lucide-react'
@@ -20,14 +20,18 @@ const SORT_OPTIONS = [
 
 export default function ListBuilder() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isEditing = !!id
-  
+
+  // Get media type from URL param (e.g., /lists/new?type=tv)
+  const initialMediaType = searchParams.get('type') === 'tv' ? 'tv' : 'movie'
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    media_type: 'movie',
+    media_type: initialMediaType,
     filters: [],
     filter_operator: 'and',
     sort_by: 'popularity.desc',

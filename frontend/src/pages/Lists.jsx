@@ -49,7 +49,7 @@ export default function Lists() {
             Manage your movie and TV show lists
           </p>
         </div>
-        <Link to="/lists/new" className="btn btn-primary">
+        <Link to={`/lists/new${filter !== 'all' ? `?type=${filter}` : ''}`} className="btn btn-primary">
           <Plus size={18} />
           New List
         </Link>
@@ -83,7 +83,7 @@ export default function Lists() {
         <div className="empty-state">
           <h3>No lists yet</h3>
           <p>Create your first list to get started!</p>
-          <Link to="/lists/new" className="btn btn-primary" style={{ marginTop: '1rem' }}>
+          <Link to={`/lists/new${filter !== 'all' ? `?type=${filter}` : ''}`} className="btn btn-primary" style={{ marginTop: '1rem' }}>
             <Plus size={18} />
             Create List
           </Link>
