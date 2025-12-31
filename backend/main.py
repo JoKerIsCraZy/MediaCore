@@ -23,7 +23,7 @@ settings = get_settings()
 
 # Path to frontend static files
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-
+STATIC_DIR = os.path.abspath(STATIC_DIR)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -84,9 +84,10 @@ if os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}")
     async def serve_spa(request: Request, full_path: str):
         """Serve the SPA for all non-API routes."""
-        # Check if file exists in static dir
-        file_path = os.path.join(STATIC_DIR, full_path)
-        if os.path.isfile(file_path):
+        # Normalize and validate the requested path to prevent directory traversal
+        file_path = os.path.normpath(os.path.join(STATIC_DIR, full_path))
+        # Ensure the resolved path is still within STATIC_DIR
+        if os.path.commonpath([STATIC_DIR, file_path]) == STATIC_DIR and os.path.isfile(file_path):
             return FileResponse(file_path)
         # Return index.html for SPA routing
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
