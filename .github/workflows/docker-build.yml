@@ -94,7 +94,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/jokerlist:${{ steps.version.outputs.VERSION }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/jokerlist:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/mediacore:${{ steps.version.outputs.VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/mediacore:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

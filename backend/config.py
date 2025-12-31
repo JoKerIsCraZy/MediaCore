@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """Application configuration settings."""
 
     # Database
-    database_url: str = f"sqlite+aiosqlite:///{BACKEND_DIR}/data/jokerlist.db"
+    database_url: str = f"sqlite+aiosqlite:///{BACKEND_DIR}/data/mediacore.db"
     media_database_url: str = f"sqlite+aiosqlite:///{PROJECT_ROOT}/api-central/media_database.db"
 
     # TMDB API

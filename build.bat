@@ -1,5 +1,5 @@
 @echo off
-REM Build script for JokerList (Windows)
+REM Build script for MediaCore (Windows)
 
 echo Building frontend...
 cd frontend

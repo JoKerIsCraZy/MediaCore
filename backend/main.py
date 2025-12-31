@@ -29,19 +29,19 @@ STATIC_DIR = os.path.abspath(STATIC_DIR)
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
-    logger.info("Starting JokerList...")
+    logger.info("Starting MediaCore...")
     await init_db()
     start_scheduler()
-    logger.info("JokerList started successfully!")
+    logger.info("MediaCore started successfully!")
     
     yield
     
     # Shutdown
-    logger.info("Shutting down JokerList...")
+    logger.info("Shutting down MediaCore...")
     stop_scheduler()
     await tmdb_service.close()
     await close_db()
-    logger.info("JokerList shut down successfully!")
+    logger.info("MediaCore shut down successfully!")
 
 
 # Create FastAPI app
@@ -96,7 +96,7 @@ else:
     async def root():
         """Root endpoint when no frontend is built."""
         return {
-            "name": "JokerList",
+            "name": "MediaCore",
             "version": "1.0.0",
             "docs": "/docs",
             "message": "Frontend not built. Visit /docs for API documentation."

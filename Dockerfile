@@ -1,5 +1,5 @@
 # ==============================================
-# JokerList - Single Container Dockerfile
+# MediaCore - Single Container Dockerfile
 # ==============================================
 # This builds both frontend and backend into one
 # optimized container
@@ -33,7 +33,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Create non-root user
-RUN groupadd -r jokerlist && useradd -r -g jokerlist jokerlist
+RUN groupadd -r mediacore && useradd -r -g mediacore mediacore
 
 # Install wheels from builder
 COPY --from=backend-builder /app/wheels /wheels
@@ -46,10 +46,10 @@ COPY backend/ .
 COPY --from=frontend-builder /app/frontend/dist ./static
 
 # Create data directory
-RUN mkdir -p /app/data && chown -R jokerlist:jokerlist /app
+RUN mkdir -p /app/data && chown -R mediacore:mediacore /app
 
 # Switch to non-root user
-USER jokerlist
+USER mediacore
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1

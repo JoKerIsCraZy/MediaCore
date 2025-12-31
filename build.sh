@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build script for JokerList
+# Build script for MediaCore
 
 echo "Building frontend..."
 cd frontend

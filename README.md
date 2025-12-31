@@ -238,7 +238,7 @@ Data is stored in SQLite databases:
 | Database | Location | Content |
 |----------|----------|---------|
 | IMDb DB | `api-central/media_database.db` | IMDb ratings and title data |
-| App DB | `backend/data/jokerlist.db` | Lists, list items, settings |
+| App DB | `backend/data/mediacore.db` | Lists, list items, settings |
 
 TMDB data (movies, TV shows, genres, providers) is fetched live from the TMDB API.
 
@@ -281,7 +281,7 @@ All configuration is done via the `.env` file in the project root:
 TMDB_API_KEY=your_api_key
 
 # Optional - Database paths (defaults work fine)
-DATABASE_URL=sqlite+aiosqlite:///./backend/data/jokerlist.db
+DATABASE_URL=sqlite+aiosqlite:///./backend/data/mediacore.db
 MEDIA_DATABASE_URL=sqlite+aiosqlite:///./api-central/media_database.db
 
 # Optional - Server settings
